@@ -71,9 +71,9 @@ const tiers: PricingTier[] = [
       "Custom support scope based on your business needs",
     ],
     ctaLabel: "Talk to Sales",
-    ctaHref: "https://t.me/offer_hub_contributors",
+    ctaHref: "/contact",
     ctaStyle: "secondary",
-    external: true,
+    external: false,
     icon: Building2,
   },
 ];
@@ -149,14 +149,9 @@ export default function PricingPage() {
           <p className="mt-10 text-center text-sm text-content-secondary">
             Need help choosing the right setup? Reach us through our
             {" "}
-            <a
-              href="https://t.me/offer_hub_contributors"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-theme-primary font-semibold hover:underline"
-            >
+            <Link href="/contact" className="text-theme-primary font-semibold hover:underline">
               contact channel
-            </a>
+            </Link>
             {" "}
             and we can recommend a path based on your business stage.
           </p>
