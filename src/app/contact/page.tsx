@@ -15,7 +15,7 @@ export default function ContactPage() {
           <div className="text-center mb-12">
             <p className="text-[11px] font-black uppercase tracking-[0.4em] text-theme-primary mb-4">Contact</p>
             <h1 className="text-4xl font-black text-content-primary tracking-tight mb-4">Contact Sales</h1>
-            <p className="text-lg text-content-secondary">Share some details about your company and use case — we'll follow up to discuss enterprise integrations, SLAs, and pricing.</p>
+            <p className="text-lg text-content-secondary">Share some details about your company and use case — we&apos;ll follow up to discuss enterprise integrations, SLAs, and pricing.</p>
           </div>
 
           <ContactForm />
