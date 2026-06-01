@@ -1,35 +1,21 @@
-# 📝 Pull Request 
+## Pull Request
 
-## 🔧 Title: 
+Short description of the change and the motivation for the PR.
 
--
+## Related issues
 
-## 🛠️ Issue
+- Fixes: # (issue number)
 
-- Closes #issue-ID
+## Description of changes
 
-## 📚 Description
+- Summary of what changed and why.
 
--
+## Checklist
 
-## 🗄️ Database changes
+- [ ] I have added tests where relevant
+- [ ] I have updated documentation where relevant
+- [ ] This PR is scoped and does not include unrelated changes
 
-- Include any DB migrations or SQL required to support this PR.
-- For the contact form feature, include the migration `sql/contact_inquiries.sql` and link to the schema doc: `docs/contact-inquiries.md`.
+## Screenshots / Evidence
 
-Example note to add to PR description:
-
-```
-Database migration: `sql/contact_inquiries.sql`
-Table: `contact_inquiries`
-Columns: `id (uuid)`, `company (text)`, `contact_name (text)`, `email (text)`, `message (text)`, `created_at (timestamptz)`.
-See docs/contact-inquiries.md for details.
-```
-
-## ✅ Changes applied
-
--
-
-## 🔍 Evidence/Media (screenshots/videos)
-
--
+- Add screenshots, recordings, or logs if helpful for reviewers.
