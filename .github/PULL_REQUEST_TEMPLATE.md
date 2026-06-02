@@ -1,21 +1,21 @@
-## Pull Request
+# 📝 Pull Request 
 
-Short description of the change and the motivation for the PR.
+## 🔧 Title: 
 
-## Related issues
+-
 
-- Fixes: # (issue number)
+## 🛠️ Issue
 
-## Description of changes
+- Closes #issue-ID
 
-- Summary of what changed and why.
+## 📚 Description
 
-## Checklist
+-
 
-- [ ] I have added tests where relevant
-- [ ] I have updated documentation where relevant
-- [ ] This PR is scoped and does not include unrelated changes
+## ✅ Changes applied
 
-## Screenshots / Evidence
+-
 
-- Add screenshots, recordings, or logs if helpful for reviewers.
+## 🔍 Evidence/Media (screenshots/videos)
+
+-
