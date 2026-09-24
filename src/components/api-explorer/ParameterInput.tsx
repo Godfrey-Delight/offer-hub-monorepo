@@ -1,3 +1,6 @@
+"use client";
+
+import { useId } from "react";
 import { cn } from "@/lib/cn";
 
 interface ParameterInputProps {
@@ -21,7 +24,9 @@ export function ParameterInput({
   value,
   onChange,
 }: ParameterInputProps) {
-  const inputId = `param-${name}`;
+  const reactId = useId();
+  const inputId = `param-${name}-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const descId = `desc-${name}-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
 
   const inputClasses = cn(
     "w-full rounded-xl px-3 py-2.5 text-sm font-medium",
@@ -46,18 +51,20 @@ export function ParameterInput({
           {required ? "required" : "optional"}
         </span>
       </label>
-      <p className="text-xs text-content-secondary">
+      <p id={descId} className="text-xs text-content-secondary">
         {description}
       </p>
 
       {type === "select" && options ? (
         <select
           id={inputId}
+          aria-describedby={descId}
+          aria-required={required}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className={inputClasses}
         >
-          <option value="">Select...</option>
+          <option value="">Select option...</option>
           {options.map((opt) => (
             <option key={opt} value={opt}>
               {opt}
@@ -67,21 +74,25 @@ export function ParameterInput({
       ) : type === "boolean" ? (
         <select
           id={inputId}
+          aria-describedby={descId}
+          aria-required={required}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className={inputClasses}
         >
-          <option value="">Select...</option>
+          <option value="">Select boolean...</option>
           <option value="true">true</option>
           <option value="false">false</option>
         </select>
       ) : (
         <input
           id={inputId}
+          aria-describedby={descId}
+          aria-required={required}
           type={type === "number" ? "number" : "text"}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
+          placeholder={placeholder || `Enter ${name}...`}
           className={inputClasses}
         />
       )}

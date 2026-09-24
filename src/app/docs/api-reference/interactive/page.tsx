@@ -53,7 +53,7 @@ export default function InteractiveExplorerPage() {
                 Interactive API Explorer
               </h1>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-bg-sunken text-theme-primary shadow-neu-sunken-subtle">
-                <CheckCircle2 size={13} className="text-theme-success" />
+                <CheckCircle2 size={13} className="text-theme-success" aria-hidden="true" />
                 {totalEndpointsCount} Verified Endpoints
               </span>
             </div>
@@ -68,9 +68,10 @@ export default function InteractiveExplorerPage() {
               href="/openapi.json"
               target="_blank"
               download="openapi.json"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-bg-base text-theme-primary shadow-neu-raised hover:shadow-neu-raised-sm active:shadow-neu-sunken transition-all duration-200 border border-theme-border/20"
+              aria-label="Download complete OpenAPI 3.0 specification in JSON format"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-bg-base text-theme-primary shadow-neu-raised hover:shadow-neu-raised-sm active:shadow-neu-sunken transition-all duration-200 border border-theme-border/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary"
             >
-              <Download size={14} />
+              <Download size={14} aria-hidden="true" />
               OpenAPI 3.0 Spec
             </Link>
           </div>
@@ -79,7 +80,7 @@ export default function InteractiveExplorerPage() {
         {/* Informational Callout in pure neumorphic styling */}
         <div className="p-5 rounded-2xl bg-bg-sunken shadow-neu-sunken-subtle space-y-2 border border-theme-border/10">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-theme-primary">
-            <FileCode size={15} />
+            <FileCode size={15} aria-hidden="true" />
             Verified Controller Schema
           </div>
           <p className="text-sm text-content-secondary leading-relaxed">
@@ -90,9 +91,11 @@ export default function InteractiveExplorerPage() {
         {/* Search & Category Filter Controls */}
         <div className="flex flex-col sm:flex-row items-center gap-4">
           <div className="relative flex-1 w-full">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted" size={16} />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted" size={16} aria-hidden="true" />
             <input
+              id="api-explorer-search-input"
               type="text"
+              aria-label="Search API endpoints by path, title, method, or controller"
               placeholder="Search by path (e.g. /orders, /balance), method, or controller..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -101,10 +104,15 @@ export default function InteractiveExplorerPage() {
           </div>
 
           <div className="w-full sm:w-auto">
+            <label htmlFor="api-explorer-category-select" className="sr-only">
+              Filter by category
+            </label>
             <select
+              id="api-explorer-category-select"
+              aria-label="Filter API endpoints by category"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-medium bg-bg-base shadow-neu-raised text-content-primary outline-none transition-all border border-theme-border/20 cursor-pointer"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-medium bg-bg-base shadow-neu-raised text-content-primary outline-none transition-all border border-theme-border/20 cursor-pointer focus:ring-2 focus:ring-theme-primary"
             >
               <option value="ALL">All Categories ({totalEndpointsCount})</option>
               {API_SCHEMA.map((cat) => (
@@ -117,7 +125,7 @@ export default function InteractiveExplorerPage() {
         </div>
 
         {searchQuery && (
-          <p className="text-xs text-content-secondary">
+          <p className="text-xs text-content-secondary" aria-live="polite">
             Showing <strong className="text-content-primary">{displayedCount}</strong> matching endpoints for &quot;{searchQuery}&quot;
           </p>
         )}
@@ -132,9 +140,9 @@ export default function InteractiveExplorerPage() {
           </div>
         ) : (
           filteredCategories.map((category) => (
-            <section key={category.name} className="space-y-4">
+            <section key={category.name} className="space-y-4" aria-labelledby={`category-heading-${category.name.replace(/[^a-zA-Z0-9]/g, "_")}`}>
               <div>
-                <h2 className="text-xl font-black text-content-primary tracking-tight">
+                <h2 id={`category-heading-${category.name.replace(/[^a-zA-Z0-9]/g, "_")}`} className="text-xl font-black text-content-primary tracking-tight">
                   {category.name}
                 </h2>
                 <p className="text-sm text-content-secondary mt-0.5">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useId } from "react";
 import { ChevronDown, Play, Loader2, ShieldCheck, FileCode } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { ApiEndpoint } from "@/data/api-schema";
@@ -23,6 +23,11 @@ export function EndpointPanel({ endpoint }: EndpointPanelProps) {
   const [showResponse, setShowResponse] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState(0);
+
+  const panelId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const headerId = `endpoint-header-${endpoint.method}-${panelId}`;
+  const sectionId = `endpoint-section-${endpoint.method}-${panelId}`;
+  const bodyInputId = `body-input-${endpoint.method}-${panelId}`;
 
   useEffect(() => {
     if (isOpen && contentRef.current) {
@@ -70,9 +75,14 @@ export function EndpointPanel({ endpoint }: EndpointPanelProps) {
     <div className="rounded-2xl overflow-hidden bg-bg-base shadow-neu-raised relative z-10 transition-all duration-200">
       {/* ── Header button ── */}
       <button
+        id={headerId}
+        type="button"
+        aria-expanded={isOpen}
+        aria-controls={sectionId}
+        aria-label={`${endpoint.method} ${endpoint.path} - ${endpoint.title}`}
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "w-full flex items-center gap-3 px-5 py-4 text-left transition-all duration-200",
+          "w-full flex items-center gap-3 px-5 py-4 text-left transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary",
           isOpen ? "bg-bg-sunken shadow-neu-sunken-subtle" : "bg-bg-base hover:bg-bg-sunken/40"
         )}
       >
@@ -87,11 +97,12 @@ export function EndpointPanel({ endpoint }: EndpointPanelProps) {
         <div className="ml-auto flex items-center gap-2">
           {endpoint.scope && (
             <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-bg-elevated text-theme-primary shadow-neu-raised-sm">
-              <ShieldCheck size={11} /> {endpoint.scope}
+              <ShieldCheck size={11} aria-hidden="true" /> {endpoint.scope}
             </span>
           )}
           <ChevronDown
             size={16}
+            aria-hidden="true"
             className={cn(
               "flex-shrink-0 text-content-secondary transition-transform duration-300 ease-out",
               isOpen ? "rotate-0" : "-rotate-90"
@@ -102,6 +113,9 @@ export function EndpointPanel({ endpoint }: EndpointPanelProps) {
 
       {/* ── Expandable body ── */}
       <div
+        id={sectionId}
+        role="region"
+        aria-labelledby={headerId}
         className="overflow-hidden transition-[height,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
         style={{ height: isOpen ? contentHeight : 0, opacity: isOpen ? 1 : 0 }}
       >
@@ -116,7 +130,7 @@ export function EndpointPanel({ endpoint }: EndpointPanelProps) {
             </p>
             {endpoint.sourceController && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono text-content-secondary bg-bg-sunken shadow-neu-sunken-subtle">
-                <FileCode size={13} className="text-theme-primary" />
+                <FileCode size={13} className="text-theme-primary" aria-hidden="true" />
                 {endpoint.sourceController}
               </span>
             )}
@@ -159,13 +173,15 @@ export function EndpointPanel({ endpoint }: EndpointPanelProps) {
 
               {endpoint.requestBody && (
                 <div className="space-y-2">
-                  <h4 className="text-[11px] font-black uppercase tracking-widest text-theme-primary">
+                  <label htmlFor={bodyInputId} className="block text-[11px] font-black uppercase tracking-widest text-theme-primary">
                     Request Body{" "}
                     <span className="ml-2 font-normal normal-case tracking-normal text-content-secondary">
                       {endpoint.requestBody.contentType}
                     </span>
-                  </h4>
+                  </label>
                   <textarea
+                    id={bodyInputId}
+                    aria-label={`Request body JSON for ${endpoint.method} ${endpoint.path}`}
                     value={bodyValue}
                     onChange={(e) => setBodyValue(e.target.value)}
                     rows={Math.min(bodyValue.split("\n").length + 1, 12)}
@@ -190,11 +206,13 @@ export function EndpointPanel({ endpoint }: EndpointPanelProps) {
           {/* Try it action */}
           <div className="flex items-center gap-3">
             <button
+              type="button"
+              aria-label={`Send test request to ${endpoint.method} ${endpoint.path}`}
               onClick={handleTryIt}
               disabled={loading}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-theme-primary hover:bg-theme-primary-hover shadow-neu-raised hover:shadow-neu-raised-sm active:shadow-neu-sunken transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-theme-primary hover:bg-theme-primary-hover shadow-neu-raised hover:shadow-neu-raised-sm active:shadow-neu-sunken transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary"
             >
-              {loading ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+              {loading ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Play size={16} aria-hidden="true" />}
               {loading ? "Simulating..." : "Send Request"}
             </button>
             <span className="text-xs text-content-secondary">
