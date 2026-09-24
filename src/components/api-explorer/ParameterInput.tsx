@@ -2,7 +2,7 @@ import { cn } from "@/lib/cn";
 
 interface ParameterInputProps {
   name: string;
-  type: "string" | "number" | "select";
+  type: "string" | "number" | "select" | "boolean";
   required: boolean;
   description: string;
   placeholder?: string;
@@ -63,6 +63,17 @@ export function ParameterInput({
               {opt}
             </option>
           ))}
+        </select>
+      ) : type === "boolean" ? (
+        <select
+          id={inputId}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={inputClasses}
+        >
+          <option value="">Select...</option>
+          <option value="true">true</option>
+          <option value="false">false</option>
         </select>
       ) : (
         <input

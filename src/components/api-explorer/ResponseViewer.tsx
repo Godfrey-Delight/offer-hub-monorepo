@@ -22,31 +22,25 @@ export function ResponseViewer({ responses }: ResponseViewerProps) {
   }
 
   return (
-    <div className="rounded-2xl shadow-sunken overflow-hidden" style={{ background: "#0f172a" }}>
+    <div className="rounded-2xl shadow-neu-sunken overflow-hidden bg-bg-sunken border border-theme-border/20">
       {/* Tab bar */}
-      <div
-        className="flex items-center justify-between px-4 py-2 border-b"
-        style={{ borderColor: "rgba(255,255,255,0.08)" }}
-      >
-        <div className="flex gap-1">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-theme-border/20 bg-bg-base/40">
+        <div className="flex gap-1.5 flex-wrap">
           {responses.map((res, i) => {
             const isActive = i === activeTab;
             const isSuccess = res.status >= 200 && res.status < 300;
             return (
               <button
-                key={res.status}
+                key={`${res.status}-${res.label}`}
                 onClick={() => setActiveTab(i)}
                 className={cn(
-                  "px-3 py-1 rounded-lg text-xs font-mono font-medium transition-all duration-200"
-                )}
-                style={{
-                  color: isActive
+                  "px-3 py-1 rounded-lg text-xs font-mono font-medium transition-all duration-200",
+                  isActive
                     ? isSuccess
-                      ? "#4ade80"
-                      : "#f87171"
-                    : "rgba(255,255,255,0.4)",
-                  background: isActive ? "rgba(255,255,255,0.08)" : "transparent",
-                }}
+                      ? "text-theme-success bg-theme-success/15 shadow-neu-sunken-subtle font-bold"
+                      : "text-theme-error bg-theme-error/15 shadow-neu-sunken-subtle font-bold"
+                    : "text-content-secondary hover:text-content-primary bg-transparent"
+                )}
               >
                 {res.status} {res.label}
               </button>
@@ -58,9 +52,10 @@ export function ResponseViewer({ responses }: ResponseViewerProps) {
           onClick={handleCopy}
           aria-label="Copy response"
           className={cn(
-            "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium",
-            "transition-all duration-200",
-            copied ? "text-green-400" : "text-white/40 hover:text-white/80"
+            "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200",
+            copied
+              ? "text-theme-success bg-theme-success/10 shadow-neu-sunken-subtle"
+              : "text-content-secondary hover:text-content-primary bg-bg-base shadow-neu-raised-sm hover:shadow-neu-sunken-subtle"
           )}
         >
           {copied ? <Check size={13} /> : <Copy size={13} />}
@@ -69,10 +64,8 @@ export function ResponseViewer({ responses }: ResponseViewerProps) {
       </div>
 
       {/* JSON body */}
-      <pre className="overflow-x-auto p-4 text-sm leading-relaxed m-0">
-        <code style={{ color: "#a5f3fc", fontFamily: "ui-monospace, monospace" }}>
-          {current.body}
-        </code>
+      <pre className="overflow-x-auto p-4 text-xs sm:text-sm leading-relaxed m-0 font-mono text-content-primary bg-bg-sunken/80">
+        <code>{current.body}</code>
       </pre>
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { ChevronDown, Play, Loader2 } from "lucide-react";
+import { ChevronDown, Play, Loader2, ShieldCheck, FileCode } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { ApiEndpoint } from "@/data/api-schema";
 import { MethodBadge } from "./MethodBadge";
@@ -28,7 +28,7 @@ export function EndpointPanel({ endpoint }: EndpointPanelProps) {
     if (isOpen && contentRef.current) {
       setContentHeight(contentRef.current.scrollHeight);
     }
-  }, [isOpen, showResponse]);
+  }, [isOpen, showResponse, bodyValue, pathValues, queryValues]);
 
   // Build the full URL from params
   const buildUrl = useCallback(() => {
@@ -56,7 +56,7 @@ export function EndpointPanel({ endpoint }: EndpointPanelProps) {
   async function handleTryIt() {
     setLoading(true);
     setShowResponse(false);
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 400));
     setLoading(false);
     setShowResponse(true);
   }
@@ -67,42 +67,37 @@ export function EndpointPanel({ endpoint }: EndpointPanelProps) {
     endpoint.requestBody;
 
   return (
-    <div
-      className="rounded-2xl overflow-hidden bg-bg-base relative z-10"
-      style={{
-        boxShadow: "6px 6px 14px var(--shadow-dark), -6px -6px 14px var(--shadow-light)",
-      }}
-    >
+    <div className="rounded-2xl overflow-hidden bg-bg-base shadow-neu-raised relative z-10 transition-all duration-200">
       {/* ── Header button ── */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "w-full flex items-center gap-3 px-5 py-4 text-left transition-all duration-200",
-          isOpen
-            ? "bg-bg-sunken"
-            : "bg-bg-base hover:bg-bg-sunken/50",
+          isOpen ? "bg-bg-sunken shadow-neu-sunken-subtle" : "bg-bg-base hover:bg-bg-sunken/40"
         )}
-        style={
-          isOpen
-            ? { boxShadow: "inset 2px 2px 5px var(--shadow-dark), inset -2px -2px 5px var(--shadow-light)" }
-            : {}
-        }
       >
         <MethodBadge method={endpoint.method} />
-        <span className="text-sm font-mono font-semibold text-content-primary">
+        <span className="text-sm font-mono font-bold text-content-primary">
           {endpoint.path}
         </span>
-        <span className="text-sm hidden sm:inline text-content-secondary">
+        <span className="text-sm hidden md:inline text-content-secondary truncate max-w-sm">
           {endpoint.title}
         </span>
-        <ChevronDown
-          size={16}
-          className={cn(
-            "ml-auto flex-shrink-0 text-content-secondary transition-transform duration-300 ease-out",
-            isOpen && "rotate-0",
-            !isOpen && "-rotate-90",
+
+        <div className="ml-auto flex items-center gap-2">
+          {endpoint.scope && (
+            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-bg-elevated text-theme-primary shadow-neu-raised-sm">
+              <ShieldCheck size={11} /> {endpoint.scope}
+            </span>
           )}
-        />
+          <ChevronDown
+            size={16}
+            className={cn(
+              "flex-shrink-0 text-content-secondary transition-transform duration-300 ease-out",
+              isOpen ? "rotate-0" : "-rotate-90"
+            )}
+          />
+        </div>
       </button>
 
       {/* ── Expandable body ── */}
@@ -114,10 +109,18 @@ export function EndpointPanel({ endpoint }: EndpointPanelProps) {
           ref={contentRef}
           className="px-5 pb-6 pt-4 space-y-5 border-t border-theme-border/20"
         >
-          {/* Description */}
-          <p className="text-sm text-content-secondary leading-relaxed">
-            {endpoint.description}
-          </p>
+          {/* Metadata info */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-content-secondary leading-relaxed max-w-2xl">
+              {endpoint.description}
+            </p>
+            {endpoint.sourceController && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono text-content-secondary bg-bg-sunken shadow-neu-sunken-subtle">
+                <FileCode size={13} className="text-theme-primary" />
+                {endpoint.sourceController}
+              </span>
+            )}
+          </div>
 
           {/* Parameters */}
           {hasParams && (
@@ -166,11 +169,7 @@ export function EndpointPanel({ endpoint }: EndpointPanelProps) {
                     value={bodyValue}
                     onChange={(e) => setBodyValue(e.target.value)}
                     rows={Math.min(bodyValue.split("\n").length + 1, 12)}
-                    className="w-full rounded-xl px-4 py-3 text-sm font-mono text-content-primary outline-none resize-y transition-all"
-                    style={{
-                      background: "var(--color-bg-sunken)",
-                      boxShadow: "inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light)",
-                    }}
+                    className="w-full rounded-xl px-4 py-3 text-sm font-mono text-content-primary bg-bg-sunken shadow-neu-sunken outline-none resize-y transition-all border border-transparent focus:ring-2 focus:ring-theme-primary"
                   />
                 </div>
               )}
@@ -182,27 +181,26 @@ export function EndpointPanel({ endpoint }: EndpointPanelProps) {
             <h4 className="text-[11px] font-black uppercase tracking-widest text-theme-primary">
               Request URL
             </h4>
-            <div
-              className="rounded-xl px-4 py-2 text-sm font-mono break-all text-theme-primary"
-              style={{
-                background: "var(--color-bg-sunken)",
-                boxShadow: "inset 2px 2px 5px var(--shadow-dark), inset -2px -2px 5px var(--shadow-light)",
-              }}
-            >
-              <span className="text-content-secondary mr-1">{endpoint.method}</span>
+            <div className="rounded-xl px-4 py-2.5 text-sm font-mono break-all text-theme-primary bg-bg-sunken shadow-neu-sunken-subtle">
+              <span className="text-content-secondary mr-2 font-bold">{endpoint.method}</span>
               {buildUrl()}
             </div>
           </div>
 
-          {/* Try it */}
-          <button
-            onClick={handleTryIt}
-            disabled={loading}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white btn-neumorphic-primary disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200"
-          >
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
-            {loading ? "Sending..." : "Try it"}
-          </button>
+          {/* Try it action */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleTryIt}
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-theme-primary hover:bg-theme-primary-hover shadow-neu-raised hover:shadow-neu-raised-sm active:shadow-neu-sunken transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+              {loading ? "Simulating..." : "Send Request"}
+            </button>
+            <span className="text-xs text-content-secondary">
+              Simulates live request against OpenAPI 3.0 mock responder
+            </span>
+          </div>
 
           {/* Response */}
           {showResponse && <ResponseViewer responses={endpoint.responses} />}
