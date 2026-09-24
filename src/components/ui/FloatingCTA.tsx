@@ -1,55 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { X, ArrowRight } from "lucide-react";
+import { CTA_DISMISSED_KEY } from "@/constants/storage";
 
-const STORAGE_KEY = "offer-hub-cta-dismissed";
 const DISMISS_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
-
-// Inline styles for the rotating border animation
-const rotatingBorderStyles = `
-  @keyframes rotate-border {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
-
-  .animated-border-wrapper {
-    position: relative;
-    border-radius: 1rem;
-    padding: 2px;
-    overflow: hidden;
-  }
-
-  .animated-border-wrapper::before {
-    content: "";
-    position: absolute;
-    inset: -150%;
-    background: conic-gradient(
-      from 0deg,
-      transparent 0deg,
-      transparent 340deg,
-      var(--color-primary) 345deg,
-      var(--color-primary-hover) 355deg,
-      transparent 360deg
-    );
-    animation: rotate-border 3s linear infinite;
-  }
-
-  .animated-border-inner {
-    position: relative;
-    background: var(--color-bg-base);
-    border-radius: calc(1rem - 2px);
-    z-index: 1;
-  }
-`;
 
 export function FloatingCTA() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -58,13 +18,18 @@ export function FloatingCTA() {
 
   useEffect(() => {
     // Check if dismissed recently
-    const dismissedAt = localStorage.getItem(STORAGE_KEY);
+    const dismissedAt = localStorage.getItem(CTA_DISMISSED_KEY);
     if (dismissedAt) {
-      const elapsed = Date.now() - parseInt(dismissedAt, 10);
-      if (elapsed < DISMISS_DURATION) {
-        return;
+      const parsed = parseInt(dismissedAt, 10);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        localStorage.removeItem(CTA_DISMISSED_KEY);
+      } else {
+        const elapsed = Date.now() - parsed;
+        if (elapsed < DISMISS_DURATION) {
+          return;
+        }
+        localStorage.removeItem(CTA_DISMISSED_KEY);
       }
-      localStorage.removeItem(STORAGE_KEY);
     }
 
     // Show CTA after a delay for better UX
@@ -84,7 +49,7 @@ export function FloatingCTA() {
       setIsVisible(false);
       setTimeout(() => setIsAnimating(false), 300);
     } else if (!isExcludedPage && !isVisible) {
-      const dismissedAt = localStorage.getItem(STORAGE_KEY);
+      const dismissedAt = localStorage.getItem(CTA_DISMISSED_KEY);
       if (!dismissedAt) {
         setIsAnimating(true);
         setTimeout(() => setIsVisible(true), 50);
@@ -96,24 +61,20 @@ export function FloatingCTA() {
     setIsVisible(false);
     setTimeout(() => {
       setIsAnimating(false);
-      localStorage.setItem(STORAGE_KEY, Date.now().toString());
+      localStorage.setItem(CTA_DISMISSED_KEY, Date.now().toString());
     }, 300);
   };
 
   const handleClick = () => {
-    // Navigate to home page waitlist section
-    window.location.href = "/#waitlist-form";
+    // Navigate to home page waitlist section using client-side navigation
+    router.push("/#waitlist-form");
   };
 
   if (!isAnimating) return null;
 
   return (
-    <>
-      {/* Inject animation styles */}
-      <style>{rotatingBorderStyles}</style>
-
-      <div
-        className={`fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 transition-all duration-300 ease-out ${isVisible
+    <div
+        className={`fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 transition-[opacity,transform] duration-300 ease-out print:hidden ${isVisible
           ? "opacity-100 translate-y-0 scale-100"
           : "opacity-0 translate-y-4 scale-95"
           }`}
@@ -123,18 +84,19 @@ export function FloatingCTA() {
           {/* Dismiss button */}
           <button
             onClick={handleDismiss}
-            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-bg-base shadow-neu-raised-sm flex items-center justify-center text-content-secondary hover:text-content-primary hover:shadow-neu-raised-hover transition-all z-20"
+            className="absolute -top-2 -right-2 min-w-11 min-h-11 w-11 h-11 rounded-full bg-bg-base shadow-neu-raised-sm flex items-center justify-center text-content-secondary hover:text-content-primary hover:shadow-neu-raised-hover transition-[box-shadow,color] z-20"
             aria-label="Dismiss"
           >
-            <X size={12} />
+            <X size={12} aria-hidden="true" />
           </button>
 
           {/* Animated border wrapper */}
           <div className="animated-border-wrapper shadow-neu-raised hover:shadow-neu-raised-hover transition-shadow duration-300 group-hover:translate-y-0.5">
             {/* CTA Card */}
-            <div
+            <button
+              type="button"
               onClick={handleClick}
-              className="animated-border-inner cursor-pointer px-4 py-3 md:px-6 md:py-5 max-w-[240px] md:max-w-[280px]"
+              className="animated-border-inner appearance-none border-0 text-left cursor-pointer px-4 py-3 md:px-6 md:py-5 max-w-[240px] md:max-w-[280px] w-full"
             >
               <div className="flex flex-col">
                 {/* Content */}
@@ -152,17 +114,17 @@ export function FloatingCTA() {
               </div>
 
               {/* CTA Button */}
-              <button className="mt-3 md:mt-4 w-full py-2 md:py-2.5 rounded-xl bg-theme-primary text-white text-[10px] md:text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg hover:bg-theme-primary-hover transition-colors group/btn">
+              <div className="mt-3 md:mt-4 w-full py-2 md:py-2.5 rounded-xl bg-theme-primary text-white text-[10px] md:text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg hover:bg-theme-primary-hover transition-colors group/btn">
                 Get Started
                 <ArrowRight
                   size={14}
+                  aria-hidden="true"
                   className="group-hover/btn:translate-x-0.5 transition-transform"
                 />
-              </button>
-            </div>
+              </div>
+            </button>
           </div>
         </div>
       </div>
-    </>
   );
 }

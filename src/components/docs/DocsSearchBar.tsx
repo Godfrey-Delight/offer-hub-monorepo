@@ -5,6 +5,7 @@ import { Search, FileText, ChevronRight, X } from "lucide-react";
 import Fuse, { type FuseResult, type FuseResultMatch } from "fuse.js";
 import { useRouter } from "next/navigation";
 import docsIndex from "@/data/docs-index.json";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface SearchResult {
     id: string;
@@ -14,12 +15,14 @@ interface SearchResult {
     link: string;
 }
 
-export default function DocsSearchBar() {
+export function DocsSearchBar() {
     const [query, setQuery] = useState("");
-    const [debounceQuery, setDebounceQuery] = useState("");
+    const debounceQuery = useDebounce(query, 300);
     const [results, setResults] = useState<FuseResult<SearchResult>[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [activeIndex, setActiveIndex] = useState(-1);
+    const [isMac, setIsMac] = useState<boolean | null>(null);
+    const [inputFocused, setInputFocused] = useState(false);
     const searchRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
@@ -30,14 +33,6 @@ export default function DocsSearchBar() {
         includeMatches: true,
         minMatchCharLength: 2,
     }), []);
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebounceQuery(query);
-        }, 300);
-
-        return () => clearTimeout(timer);
-    }, [query]);
 
     useEffect(() => {
         if (debounceQuery.length > 1) {
@@ -57,6 +52,10 @@ export default function DocsSearchBar() {
                 setIsOpen(false);
             }
         };
+
+        const parent = searchRef.current?.closest(".overflow-hidden");
+        if (parent) (parent as HTMLElement).style.overflow = "visible";
+
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
@@ -70,6 +69,13 @@ export default function DocsSearchBar() {
         };
         document.addEventListener("keydown", handleKeyDown);
         return () => document.removeEventListener("keydown", handleKeyDown);
+    }, []);
+
+    // Detect OS for keyboard shortcut display
+    useEffect(() => {
+        const userAgent = navigator.userAgent || navigator.platform;
+        const isMacOS = /Mac|iPhone|iPad|iPod/.test(userAgent);
+        setIsMac(isMacOS);
     }, []);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -125,41 +131,55 @@ export default function DocsSearchBar() {
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        className="bg-transparent flex-1 outline-none text-content-primary placeholder:text-content-secondary w-full"
+                        onFocus={() => setInputFocused(true)}
+                        onBlur={() => setInputFocused(false)}
+                        role="combobox"
+                        aria-expanded={isOpen && results.length > 0}
+                        aria-haspopup="listbox"
+                        aria-controls="docs-search-results"
+                        aria-label="Documentation search"
+                        aria-autocomplete="list"
+                        aria-activedescendant={activeIndex >= 0 ? `result-item-${results[activeIndex]?.item.id}` : undefined}
+                        className="bg-transparent flex-1 min-h-6 text-content-primary placeholder:text-content-secondary w-full rounded-md focus-visible:outline-2 focus-visible:outline-theme-primary focus-visible:outline-offset-2 focus-visible:ring-2 focus-visible:ring-theme-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-sunken"
                     />
                     {query ? (
                         <button
                             onClick={() => { setQuery(""); setResults([]); setIsOpen(false); }}
-                            className="text-content-secondary hover:text-content-primary transition-colors flex items-center justify-center px-1"
+                            className="text-content-secondary hover:text-content-primary transition-colors inline-flex items-center justify-center min-w-11 min-h-11 px-1"
                         >
                             <X size={18} />
                         </button>
-                    ) : (
-                        <div className="flex items-center gap-1.5 pointer-events-none text-content-secondary">
-                            <kbd className="flex items-center justify-center min-w-[24px] h-[24px] text-[11px] font-sans font-medium rounded-md shadow-neu-raised-sm bg-bg-base text-content-primary">
-                                ⌘
-                            </kbd>
-                            <kbd className="flex items-center justify-center min-w-[24px] h-[24px] text-[11px] font-sans font-medium rounded-md shadow-neu-raised-sm bg-bg-base text-content-primary">
-                                K
-                            </kbd>
+                    ) : !inputFocused && isMac !== null ? (
+                        <div className="flex items-center gap-1 pointer-events-none text-content-secondary px-2 py-1 rounded-md bg-bg-base shadow-neu-raised-sm">
+                            <span className="text-[11px] font-medium text-content-secondary">
+                                {isMac ? '⌘K' : 'Ctrl K'}
+                            </span>
                         </div>
-                    )}
+                    ) : null}
                 </div>
             </div>
 
             {isOpen && results.length > 0 && (
-                <div className="absolute top-full mt-3 w-full rounded-2xl overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 duration-200 bg-bg-elevated/95 border border-theme-border/40 shadow-neu-raised backdrop-blur-xl">
-                    <div className="max-h-[450px] overflow-y-auto">
+                <div 
+                    id="docs-search-results"
+                    role="listbox"
+                    className="absolute top-full left-0 mt-3 w-full rounded-2xl z-[150] animate-dropdownIn bg-bg-elevated border border-theme-border/40 shadow-2xl shadow-black/10 backdrop-blur-md"
+                >
+                    <div className="max-h-[480px] overflow-y-auto scrollbar-thin">
                         {results.map((result, idx) => (
-                            <div
+                            <button
+                                id={`result-item-${result.item.id}`}
                                 key={result.item.id}
+                                type="button"
+                                role="option"
+                                aria-selected={activeIndex === idx}
                                 onMouseEnter={() => setActiveIndex(idx)}
                                 onClick={() => {
                                     router.push(result.item.link);
                                     setIsOpen(false);
                                     setQuery("");
                                 }}
-                                className="p-4 flex items-start gap-4 cursor-pointer transition-colors"
+                                className="w-full p-4 flex items-start gap-4 cursor-pointer transition-colors text-left appearance-none border-0 bg-transparent"
                                 style={{
                                     backgroundColor: activeIndex === idx ? "rgba(20, 154, 155, 0.08)" : "transparent",
                                 }}
@@ -181,7 +201,7 @@ export default function DocsSearchBar() {
                                         {highlightMatch(result.item.content, result.matches, "content")}
                                     </p>
                                 </div>
-                            </div>
+                            </button>
                         ))}
                     </div>
                     <div className="p-3 flex justify-between items-center text-[10px] font-bold tracking-wider uppercase bg-bg-sunken/60 text-content-secondary border-t border-theme-border/40">
@@ -199,11 +219,16 @@ export default function DocsSearchBar() {
             )}
 
             {isOpen && query.length > 1 && results.length === 0 && (
-                <div className="absolute top-full mt-3 w-full rounded-2xl p-8 text-center z-[100] animate-in fade-in slide-in-from-top-2 bg-bg-elevated/95 border border-theme-border/40 shadow-neu-raised backdrop-blur-xl">
+                <div className="absolute top-full mt-3 w-full rounded-2xl p-8 text-center z-[100] animate-dropdownIn bg-bg-elevated/95 border border-theme-border/40 shadow-neu-raised backdrop-blur-xl">
                     <p className="text-content-secondary">No results found for &quot;<span className="font-semibold text-content-primary">{query}</span>&quot;</p>
                     <p className="text-sm mt-1 text-content-secondary/80">Try a different search term</p>
                 </div>
             )}
+
+            <div className="sr-only" aria-live="polite" aria-atomic="true">
+                {isOpen && results.length > 0 ? `${results.length} results found` : ""}
+                {isOpen && query.length > 1 && results.length === 0 ? "No results found" : ""}
+            </div>
         </div>
     );
 }

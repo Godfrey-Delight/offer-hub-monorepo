@@ -5,13 +5,25 @@ import type { ComponentType } from "react";
 
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
-import LoadingBar from "@/components/ui/LoadingBar";
+import { LoadingBar } from "@/components/ui/LoadingBar";
+import { buildPageMetadata } from "@/lib/seo";
+import { GITHUB_REPO_URL } from "@/constants/github";
 
-export const metadata: Metadata = {
-  title: "Pricing | OFFER-HUB",
+export const metadata: Metadata = buildPageMetadata({
+  title: "Pricing",
   description:
     "OFFER-HUB pricing: open source core for free, free self-hosting, and enterprise support available on request.",
-};
+  keywords: [
+    "pricing",
+    "open source",
+    "self-hosting",
+    "enterprise",
+    "escrow pricing",
+    "OFFER-HUB",
+  ],
+  path: "/pricing",
+  ogImageAlt: "OFFER-HUB Pricing — open source core, free self-hosting, enterprise support",
+});
 
 type PricingTier = {
   name: string;
@@ -38,7 +50,7 @@ const tiers: PricingTier[] = [
       "Ideal for prototypes, pilots, and technical evaluation",
     ],
     ctaLabel: "View on GitHub",
-    ctaHref: "https://github.com/OFFER-HUB/offer-hub-monorepo",
+    ctaHref: GITHUB_REPO_URL,
     ctaStyle: "secondary",
     external: true,
     icon: Code2,
@@ -111,9 +123,9 @@ export default function PricingPage() {
               return (
                 <article
                   key={tier.name}
-                  className="bg-bg-elevated shadow-neu-raised rounded-[2.5rem] p-10 hover:shadow-neu-raised-hover transition-all duration-[400ms] ease-out flex flex-col group"
+                  className="bg-bg-elevated shadow-neu-raised rounded-[2.5rem] p-10 hover:shadow-neu-raised-hover transition-shadow duration-[400ms] ease-out flex flex-col group"
                 >
-                  <div className="w-16 h-16 rounded-2xl bg-bg-base shadow-neu-sunken-subtle flex items-center justify-center mb-2 group-hover:shadow-neu-sunken transition-all duration-300">
+                  <div className="w-16 h-16 rounded-2xl bg-bg-base shadow-neu-sunken-subtle flex items-center justify-center mb-2 group-hover:shadow-neu-sunken transition-shadow duration-300">
                     <Icon className="w-7 h-7 text-theme-primary" />
                   </div>
 
@@ -149,7 +161,7 @@ export default function PricingPage() {
           <p className="mt-10 text-center text-sm text-content-secondary">
             Need help choosing the right setup? Reach us through our
             {" "}
-            <Link href="/contact" className="text-theme-primary font-semibold hover:underline">
+            <Link href="/contact" className="inline-flex items-center min-h-6 text-theme-primary font-semibold hover:underline">
               contact channel
             </Link>
             {" "}

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
+import { useScrollProgress } from "@/hooks/useScrollProgress";
 
-export default function LoadingBar() {
+export function LoadingBar() {
     const [progress, setProgress] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
-    const ticking = useRef(false);
+    const scrollY = useScrollProgress(!isLoading);
 
     useEffect(() => {
         setProgress(0.3);
@@ -18,25 +19,13 @@ export default function LoadingBar() {
 
     useEffect(() => {
         if (isLoading) return;
-
-        const onScroll = () => {
-            if (!ticking.current) {
-                ticking.current = true;
-                requestAnimationFrame(() => {
-                    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-                    setProgress(docHeight > 0 ? window.scrollY / docHeight : 0);
-                    ticking.current = false;
-                });
-            }
-        };
-
-        window.addEventListener("scroll", onScroll, { passive: true });
-        return () => window.removeEventListener("scroll", onScroll);
-    }, [isLoading]);
+        const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        setProgress(docHeight > 0 ? scrollY / docHeight : 0);
+    }, [isLoading, scrollY]);
 
     return (
         <div
-            className="fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#149A9B] to-[#22e0e2] z-[9999] origin-left"
+            className="fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-theme-primary to-[#22e0e2] z-[9999] origin-left"
             style={{ transform: `scaleX(${progress})`, transition: isLoading ? "transform 0.4s ease" : "none" }}
         />
     );

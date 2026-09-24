@@ -2,14 +2,16 @@
 
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { trackPageView } from '@/lib/analytics';
+import { trackPageView } from '@/services/analytics';
+import { COOKIE_CONSENT_KEY } from '@/constants/storage';
 
-export default function Analytics() {
+export function Analytics() {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Fire-and-forget: don't block rendering/navigation
-    trackPageView(pathname);
+    if (localStorage.getItem(COOKIE_CONSENT_KEY) === "accepted") {
+      trackPageView(pathname);
+    }
   }, [pathname]);
 
   // This component renders nothing

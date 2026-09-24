@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Settings, Code, Box, Layers,
-  Shield, Workflow, FileText, Zap, Compass, Rocket, Home
-} from "lucide-react";
+import { Home, Rocket } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { SidebarSection } from "@/lib/mdx";
+import { getIcon, iconNameForDocsSlug } from "@/lib/icon-registry";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -20,20 +18,9 @@ interface DocsSidebarProps {
 }
 
 const getIconForSlug = (slug: string, isActive: boolean) => {
-  const s = slug.toLowerCase();
   const iconClass = isActive ? "text-theme-primary" : "text-content-secondary";
-
-  if (s.includes("api") || s.includes("dev") || s.includes("code")) return <Code size={16} className={iconClass} />;
-  if (s.includes("start") || s.includes("intro") || s.includes("welcome")) return <Rocket size={16} className={iconClass} />;
-  if (s.includes("escrow") || s.includes("contract")) return <Shield size={16} className={iconClass} />;
-  if (s.includes("sdk") || s.includes("tool")) return <Box size={16} className={iconClass} />;
-  if (s.includes("config") || s.includes("setting")) return <Settings size={16} className={iconClass} />;
-  if (s.includes("flow") || s.includes("lifecycle")) return <Workflow size={16} className={iconClass} />;
-  if (s.includes("helper") || s.includes("util")) return <Zap size={16} className={iconClass} />;
-  if (s.includes("design") || s.includes("ui") || s.includes("view")) return <Layers size={16} className={iconClass} />;
-  if (s.includes("network") || s.includes("stellar")) return <Compass size={16} className={iconClass} />;
-
-  return <FileText size={16} className={iconClass} />;
+  const Icon = getIcon(iconNameForDocsSlug(slug));
+  return <Icon size={16} className={iconClass} />;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -124,7 +111,7 @@ function SidebarItem({ href, icon, label, isActive }: { href: string; icon: Reac
         href={href}
         aria-current={isActive ? "page" : undefined}
         className={cn(
-          "group relative flex items-center gap-3.5 text-sm py-2.5 px-5 rounded-2xl transition-all duration-300 font-medium overflow-hidden",
+          "group relative flex items-center gap-3.5 text-sm py-2.5 px-5 rounded-2xl transition-[color,box-shadow] duration-300 font-medium overflow-hidden",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base",
           isActive
             ? "text-theme-primary"
@@ -149,7 +136,7 @@ function SidebarItem({ href, icon, label, isActive }: { href: string; icon: Reac
         <div className="absolute inset-0 bg-theme-primary/0 group-hover:bg-theme-primary/5 transition-colors z-0" />
 
         <span className={cn(
-          "relative z-10 flex-shrink-0 transition-all duration-300",
+          "relative z-10 flex-shrink-0 transition-[color,transform] duration-300",
           isActive ? "text-theme-primary scale-110" : "text-content-secondary group-hover:text-content-primary group-hover:scale-110"
         )}>
           {icon}

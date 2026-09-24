@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -8,6 +8,9 @@ import { Menu, X, Send } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useTheme } from "@/components/providers/ThemeProvider";
+import { useScrollProgress } from "@/hooks/useScrollProgress";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 
 const navLinks = [
   { href: "/#features", label: "Features" },
@@ -18,52 +21,52 @@ const navLinks = [
   { href: "/pricing", label: "Pricing" },
 ];
 
+/**
+ * Returns true when a nav link should render in its active/selected state.
+ *
+ * Rules (evaluated in order):
+ *  1. Hash links (e.g. /#features, /#how-it-works) are active only on the
+ *     home page — `pathname.startsWith("/")` would otherwise match every route.
+ *  2. Non-root full-path links (e.g. /docs, /community) are active when the
+ *     current pathname begins with that href (covers nested routes like
+ *     /docs/getting-started).
+ *  3. Exact "/" matches only the home route.
+ */
+export function isLinkActive(href: string, pathname: string): boolean {
+  // Rule 1: hash anchors belong to the home page only
+  if (href.includes("#")) return pathname === "/";
+
+  // Rule 2 & 3: prefix match for full-path links, exact match for "/"
+  if (href.startsWith("/") && href.length > 1) return pathname.startsWith(href);
+
+  return pathname === href;
+}
+
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
   const pathname = usePathname();
+  const scrollY = useScrollProgress();
+  const isScrolled = scrollY > 12;
 
-  useEffect(() => {
-    let ticking = false;
-    const onScroll = () => {
-      if (!ticking) {
-        ticking = true;
-        requestAnimationFrame(() => {
-          setIsScrolled(window.scrollY > 12);
-          ticking = false;
-        });
-      }
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
 
-  // Prevent body scroll when mobile menu is open
-  useEffect(() => {
-    if (isMenuOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isMenuOpen]);
+  useFocusTrap({
+    containerRef: menuRef,
+    isActive: isMenuOpen,
+    onEscape: () => setIsMenuOpen(false),
+    restoreFocusRef: toggleRef,
+  });
+
+  useBodyScrollLock(isMenuOpen);
 
   const { resolvedTheme } = useTheme();
 
   return (
     <>
-      {/*
-       * NEUMORPHIC NAVBAR
-       * ─────────────────
-       * Background = bg-bg-base (theme-aware) → the container is invisible.
-       * Depth comes exclusively from the bottom-projected dual shadow (dark ↘ / light ↖).
-       * Buttons share the same base color and "emerge" via their own shadows.
-       */}
       <header
         className={cn(
-          "fixed top-4 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:max-w-6xl xl:max-w-7xl md:w-full z-[500] transition-all duration-300 ease-out rounded-full bg-bg-base",
+          "fixed top-4 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:max-w-6xl xl:max-w-7xl md:w-full z-[500] transition-shadow duration-300 ease-out rounded-full bg-bg-base print:hidden",
           isScrolled
             ? "shadow-neu-raised-scrolled py-1"
             : "shadow-neu-raised py-2"
@@ -75,7 +78,11 @@ export function Navbar() {
             {/* ── Logo ── */}
             <Link href="/" className="flex items-center gap-2.5 flex-shrink-0">
               <Image
-                src={resolvedTheme === "dark" ? "/OFFER-HUB-logo-to-darkmode.png" : "/OFFER-HUB-logo.png"}
+                src={
+                  resolvedTheme === "dark"
+                    ? "/OFFER-HUB-logo-to-darkmode.png"
+                    : "/OFFER-HUB-logo.png"
+                }
                 alt="OFFER-HUB"
                 width={180}
                 height={48}
@@ -90,35 +97,29 @@ export function Navbar() {
                 href="/"
                 className={cn(
                   "px-3 py-2 rounded-full text-[13px] xl:text-sm font-medium",
-                  "transition-all duration-300 ease-out bg-bg-base",
-                  pathname === "/"
+                  "transition-[color,box-shadow] duration-300 ease-out bg-bg-base",
+                  isLinkActive("/", pathname)
                     ? "text-content-primary shadow-neu-sunken-subtle"
                     : "text-content-secondary hover:text-content-primary hover:shadow-neu-sunken-subtle"
                 )}
               >
                 Home
               </Link>
-              {navLinks.map((link) => {
-                const isActive = link.href.startsWith("/") && link.href.length > 1
-                  ? pathname.startsWith(link.href)
-                  : pathname === link.href;
-
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={cn(
-                      "px-3 py-2 rounded-full text-[13px] xl:text-sm font-medium",
-                      "transition-all duration-300 ease-out bg-bg-base",
-                      isActive
-                        ? "text-content-primary shadow-neu-sunken-subtle"
-                        : "text-content-secondary hover:text-content-primary hover:shadow-neu-sunken-subtle"
-                    )}
-                  >
-                    {link.label}
-                  </Link>
-                );
-              })}
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "px-3 py-2 rounded-full text-[13px] xl:text-sm font-medium",
+                    "transition-[color,box-shadow] duration-300 ease-out bg-bg-base",
+                    isLinkActive(link.href, pathname)
+                      ? "text-content-primary shadow-neu-sunken-subtle"
+                      : "text-content-secondary hover:text-content-primary hover:shadow-neu-sunken-subtle"
+                  )}
+                >
+                  {link.label}
+                </Link>
+              ))}
             </div>
 
             {/* ── Desktop CTAs ── */}
@@ -129,16 +130,21 @@ export function Navbar() {
                 className="px-6 py-2 rounded-full text-sm font-semibold btn-neumorphic-primary flex items-center gap-2 group"
               >
                 Join Waitlist
-                <Send size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                <Send
+                  size={14}
+                  className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"
+                />
               </a>
             </div>
 
-
             {/* ── Mobile hamburger ── */}
             <button
+              ref={toggleRef}
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="lg:hidden p-2 rounded-full transition-all duration-300 ease-out bg-bg-base text-content-secondary shadow-neu-raised hover:shadow-neu-sunken-subtle"
               aria-label="Toggle menu"
+              aria-expanded={isMenuOpen}
+              aria-controls="mobile-menu"
+              className="lg:hidden inline-flex items-center justify-center min-w-11 min-h-11 p-2 rounded-full transition-shadow duration-300 ease-out bg-bg-base text-content-secondary shadow-neu-raised hover:shadow-neu-sunken-subtle"
             >
               {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -146,25 +152,28 @@ export function Navbar() {
         </nav>
       </header>
 
-      {/* ── Mobile menu overlay (outside the pill navbar) ── */}
+      {/* ── Mobile menu overlay ── */}
       {isMenuOpen && (
         <>
           {/* Backdrop */}
           <div
-            className="lg:hidden fixed inset-0 z-[499] bg-black/20 dark:bg-black/40 backdrop-blur-sm animate-fadeIn"
+            aria-hidden="true"
+            className="lg:hidden fixed inset-0 z-[499] bg-black/20 dark:bg-black/40 backdrop-blur-sm animate-fadeIn cursor-pointer"
             onClick={() => setIsMenuOpen(false)}
           />
 
           {/* Menu panel */}
           <div
+            id="mobile-menu"
+            ref={menuRef}
             className="lg:hidden fixed top-24 left-4 right-4 z-[501] p-6 rounded-3xl bg-bg-base shadow-neu-raised-scrolled animate-fadeInUp"
           >
             <div className="flex flex-col gap-2">
               <Link
                 href="/"
                 className={cn(
-                  "px-4 py-3.5 rounded-2xl text-sm font-medium transition-all duration-300 ease-out",
-                  pathname === "/"
+                  "px-4 py-3.5 rounded-2xl text-sm font-medium transition-colors duration-300 ease-out",
+                  isLinkActive("/", pathname)
                     ? "text-content-primary bg-white/50 dark:bg-white/5 shadow-neu-sunken-subtle"
                     : "text-content-secondary hover:text-content-primary hover:bg-white/30 dark:hover:bg-white/5"
                 )}
@@ -172,32 +181,26 @@ export function Navbar() {
               >
                 Home
               </Link>
-              {navLinks.map((link) => {
-                const isActive = link.href.startsWith("/") && link.href.length > 1
-                  ? pathname.startsWith(link.href)
-                  : pathname === link.href;
-
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={cn(
-                      "px-4 py-3.5 rounded-2xl text-sm font-medium transition-all duration-300 ease-out",
-                      isActive
-                        ? "text-content-primary bg-white/50 dark:bg-white/5 shadow-neu-sunken-subtle"
-                        : "text-content-secondary hover:text-content-primary hover:bg-white/30 dark:hover:bg-white/5"
-                    )}
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    {link.label}
-                  </Link>
-                );
-              })}
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "px-4 py-3.5 rounded-2xl text-sm font-medium transition-colors duration-300 ease-out",
+                    isLinkActive(link.href, pathname)
+                      ? "text-content-primary bg-white/50 dark:bg-white/5 shadow-neu-sunken-subtle"
+                      : "text-content-secondary hover:text-content-primary hover:bg-white/30 dark:hover:bg-white/5"
+                  )}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ))}
             </div>
 
-            <div className="mt-6 pt-6 border-t border-[#d1d5db]/50 flex flex-col gap-4">
+            <div className="mt-6 pt-6 border-t border-theme-border/50 flex flex-col gap-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-[#6D758F]">Theme</span>
+                <span className="text-sm text-content-secondary">Theme</span>
                 <ThemeToggle />
               </div>
               <a

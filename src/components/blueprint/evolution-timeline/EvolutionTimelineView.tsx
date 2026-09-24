@@ -1,18 +1,19 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { DOMAINS, NEU_ELEVATED, NEU_SUNKEN, statusConfig } from "./config";
-import { PHASES } from "./data";
+import { PHASES } from "./evolution-timeline.data";
 import { ConnectorDot } from "./ConnectorDot";
 import { PhaseCard } from "./PhaseCard";
 import { TimelineLine } from "./TimelineLine";
 import type { PhaseDomain, PhaseStatus } from "./types";
 
-export default function EvolutionTimelineView() {
+
+export function EvolutionTimelineView() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeDomain, setActiveDomain] = useState<"all" | PhaseDomain>("all");
-
+  const shouldReduceMotion = useReducedMotion();
   const filtered =
     activeDomain === "all"
       ? PHASES
@@ -47,7 +48,7 @@ export default function EvolutionTimelineView() {
             className={`inline-flex items-center gap-2 rounded-full border border-[var(--color-primary)]/30 px-4 py-1.5 text-[12px] font-semibold uppercase tracking-widest text-[var(--color-primary)] ${NEU_SUNKEN}`}
           >
             <motion.span
-              animate={{ opacity: [1, 0.3, 1] }}
+              animate={shouldReduceMotion ? {} : { opacity: [1, 0.3, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
               className="h-1.5 w-1.5 rounded-full bg-[var(--color-primary)]"
             />
@@ -121,7 +122,7 @@ export default function EvolutionTimelineView() {
               <button
                 key={domainOption.key}
                 onClick={() => setActiveDomain(domainOption.key)}
-                className={`whitespace-nowrap rounded-xl px-4 py-2 text-[13px] font-semibold transition-all duration-200 ${
+                className={`whitespace-nowrap rounded-xl px-4 py-2 text-[13px] font-semibold transition-[background-color,color,box-shadow] duration-200 ${
                   active
                     ? `${NEU_ELEVATED} bg-[var(--color-primary)] text-white`
                     : "text-content-secondary hover:text-content-primary"

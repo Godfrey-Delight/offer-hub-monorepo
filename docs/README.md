@@ -4,12 +4,19 @@ Welcome to the OFFER-HUB documentation. This comprehensive guide covers all aspe
 
 ## Documentation Overview
 
-OFFER-HUB documentation is organized in two locations:
+OFFER-HUB documentation is intentionally split by **audience**, not duplicated by accident:
 
-| Location | Purpose | Format |
-|----------|---------|--------|
-| `/docs/` | Internal developer documentation | Markdown |
-| `/content/docs/` | Public web documentation | MDX (rendered at offer-hub.tech) |
+| Location | Audience | Purpose | Format |
+|----------|----------|---------|--------|
+| `/docs/` | Contributors & maintainers | Internal engineering reference: implementation detail, architecture, standards | Markdown, read directly on GitHub |
+| `/content/docs/` | External developers & integrators | Public docs website: how to use the API/SDK | MDX, rendered at offer-hub.tech/docs |
+| `/src/content/` | End users (legal) | Static legal page copy (privacy policy, terms) | MDX, rendered directly by their page routes — not part of the docs site nav/search |
+
+Some topics exist in both `/docs/guides/` and `/content/docs/guide/` (e.g. `escrow`, `orders`, `disputes`, `wallets`, `deposits`, `withdrawals`, `security`) — this is deliberate, not drift: the `/docs/` version explains how the Orchestrator implements the feature (state machine, signer roles, internal field names), while the `/content/docs/` version explains how an external integrator calls the public API/SDK. Each of these pairs cross-links to its counterpart at the top of the file so a reader who lands on the wrong audience's doc can find the right one.
+
+Both `/docs/` and `/content/docs/` are indexed by the standalone [`mcp/`](../mcp/README.md) package — an MCP (Model Context Protocol) server that lets AI assistants search and fetch this documentation directly. It's not part of the root npm workspace (there isn't one); it has its own `package.json` and is installed/run independently from `mcp/`.
+
+For crawlers and assistants that don't speak MCP, the public docs site also serves `/llms.txt` (an index of `/content/docs/` per the [llms.txt convention](https://llmstxt.org/)) and `/llms-full.txt` (the full concatenated Markdown of every page), generated at request time from the same `content/docs/` source via `src/lib/mdx.ts`.
 
 ## Quick Start
 
@@ -46,6 +53,7 @@ OFFER-HUB documentation is organized in two locations:
 - [Events Reference](./guides/events-reference.md) - SSE and webhook events
 - [Errors & Troubleshooting](./guides/errors-troubleshooting.md) - Error codes and solutions
 - [Marketplace Integration](./guides/marketplace-integration.md) - Integration patterns
+- [Security Best Practices](./guides/security.md) - API keys, webhooks, wallet security, and blockchain-specific threats
 - [Deployment](./guides/deployment.md) - Production deployment
 - [Scaling & Customization](./guides/scaling-customization.md) - Advanced configuration
 - [AirTM Integration](./guides/airtm.md) - AirTM payment provider

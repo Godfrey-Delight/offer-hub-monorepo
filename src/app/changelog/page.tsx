@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { buildPageMetadata } from "@/lib/seo";
+import type { GitHubRelease } from "@/types/github";
+import { GITHUB_RELEASES_API_URL } from "@/constants/github";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "Changelog",
   description:
     "Track every release and update to the OFFER-HUB platform — new features, improvements, and fixes across the ecosystem.",
@@ -13,17 +16,9 @@ export const metadata: Metadata = {
     "OFFER-HUB",
     "version history",
   ],
-};
-
-interface GitHubRelease {
-  tag_name: string;
-  name: string | null;
-  body: string | null;
-  draft: boolean;
-  prerelease: boolean;
-  published_at: string | null;
-  created_at: string;
-}
+  path: "/changelog",
+  ogImageAlt: "OFFER-HUB Changelog — releases, improvements, and fixes",
+});
 
 interface ChangelogEntry {
   version: string;
@@ -35,7 +30,7 @@ interface ChangelogEntry {
   changes: string[];
 }
 
-const RELEASES_API_URL = "https://api.github.com/repos/OFFER-HUB/offer-hub-monorepo/releases";
+const RELEASES_API_URL = GITHUB_RELEASES_API_URL;
 
 function formatReleaseDate(dateString: string): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -204,14 +199,14 @@ export default async function ChangelogPage() {
                   <div
                     className={`hidden md:block w-5/12 ${index % 2 === 0 ? "text-left" : "text-right"}`}
                   >
-                    <span className="text-sm font-black text-content-primary uppercase tracking-widest opacity-40">
+                    <span className="text-sm font-black text-content-primary uppercase tracking-widest opacity-70">
                       {entry.date}
                     </span>
                   </div>
 
                   {/* Enhanced Card content */}
                   <div className="w-full md:w-5/12 pl-12 md:pl-0">
-                    <div className="bg-bg-elevated rounded-[2.5rem] p-8 md:p-10 shadow-neu-raised hover:shadow-neu-raised-hover transition-all duration-500 ease-out group">
+                    <div className="bg-bg-elevated rounded-[2.5rem] p-8 md:p-10 shadow-neu-raised hover:shadow-neu-raised-hover transition-shadow duration-500 ease-out group">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
                         <div className="flex items-center gap-3">
                           <span className="text-2xl font-black text-content-primary tracking-tight group-hover:text-theme-primary transition-colors">
