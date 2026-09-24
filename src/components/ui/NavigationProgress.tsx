@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 export function NavigationProgress() {
@@ -8,12 +8,16 @@ export function NavigationProgress() {
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const stepTimerRefs = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const completeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const startLoading = useCallback(() => {
+    stepTimerRefs.current.forEach(clearTimeout);
+    stepTimerRefs.current = [];
+
     setIsLoading(true);
     setProgress(0);
 
-    // Animate progress: quick start, then slow down
     const steps = [
       { value: 30, delay: 0 },
       { value: 50, delay: 100 },
@@ -22,18 +26,30 @@ export function NavigationProgress() {
     ];
 
     steps.forEach(({ value, delay }) => {
-      setTimeout(() => {
+      const id = setTimeout(() => {
         setProgress((prev) => (prev < value ? value : prev));
       }, delay);
+      stepTimerRefs.current.push(id);
     });
   }, []);
 
   const completeLoading = useCallback(() => {
+    if (completeTimerRef.current !== null) {
+      clearTimeout(completeTimerRef.current);
+    }
     setProgress(100);
-    setTimeout(() => {
+    completeTimerRef.current = setTimeout(() => {
       setIsLoading(false);
       setProgress(0);
+      completeTimerRef.current = null;
     }, 200);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stepTimerRefs.current.forEach(clearTimeout);
+      if (completeTimerRef.current !== null) clearTimeout(completeTimerRef.current);
+    };
   }, []);
 
   // Listen for route changes
@@ -85,7 +101,7 @@ export function NavigationProgress() {
       style={{ opacity: isLoading ? 1 : 0, transition: "opacity 0.2s" }}
     >
       <div
-        className="h-full bg-gradient-to-r from-[#149A9B] to-[#22e0e2]"
+        className="h-full bg-gradient-to-r from-theme-primary to-[#22e0e2]"
         style={{
           width: `${progress}%`,
           transition: progress === 100 ? "width 0.1s ease-out" : "width 0.4s ease",

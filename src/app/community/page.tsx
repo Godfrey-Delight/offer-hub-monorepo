@@ -1,17 +1,23 @@
 import type { Metadata } from "next";
-import HeroRepoStatsSection from "@/components/community/HeroRepoStatsSection";
-import ContributorsSection from "@/components/community/ContributorsSection";
-import HowToContribute from "@/components/community/HowToContribute";
-import RecentPRsSection, { PullRequestData } from "@/components/community/RecentPRsSection";
-import OpenIssuesSection from "@/components/community/OpenIssuesSection";
-import RepoLinksSection from "@/components/community/RepoLinksSection";
-import CommunityChannelsSection from "@/components/community/CommunityChannelsSection";
-import RegistrationForm from "@/components/community/RegistrationForm";
-import LoadingBar from "@/components/ui/LoadingBar";
+import { HeroRepoStatsSection } from "@/components/community/HeroRepoStatsSection";
+import { ContributorsSection } from "@/components/community/ContributorsSection";
+import { HowToContribute } from "@/components/community/HowToContribute";
+import { RecentPRsSection } from "@/components/community/RecentPRsSection";
+import { OpenIssuesSection } from "@/components/community/OpenIssuesSection";
+import { RepoLinksSection } from "@/components/community/RepoLinksSection";
+import { CommunityChannelsSection } from "@/components/community/CommunityChannelsSection";
+import { RegistrationForm } from "@/components/community/RegistrationForm";
+import { LoadingBar } from "@/components/ui/LoadingBar";
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
+import { buildPageMetadata } from "@/lib/seo";
+import type { PullRequestData } from "@/types/community";
+import type { RepoStats, ContributorData, IssueData, CommunityData } from "@/types/community";
+import type { Contributor, GitHubRepo, GitHubPullRequest, GitHubIssue } from "@/types/github";
 
-export const metadata: Metadata = {
+export const revalidate = 600;
+
+export const metadata: Metadata = buildPageMetadata({
   title: "Community",
   description:
     "Join the OFFER-HUB open-source community. Explore contributors, open issues, recent pull requests, and learn how to get involved.",
@@ -23,73 +29,9 @@ export const metadata: Metadata = {
     "OFFER-HUB",
     "contribute",
   ],
-};
-
-interface RepoStats {
-  stars: string;
-  forks: string;
-  contributors: string;
-  openIssues: string;
-}
-
-interface CommunityData {
-  stats: RepoStats | null;
-  contributors: ContributorData[];
-  pullRequests: PullRequestData[];
-  issues: IssueData[];
-}
-
-interface Contributor {
-  login: string;
-  avatar_url: string;
-  contributions: number;
-  html_url: string;
-}
-
-interface ContributorData {
-  name: string;
-  username: string;
-  avatar: string;
-  commits: number;
-  profileUrl: string;
-}
-
-interface IssueData {
-  number: number;
-  title: string;
-  priority: string;
-  url: string;
-  labels: string[];
-}
-
-interface GitHubRepo {
-  stargazers_count: number;
-  forks_count: number;
-  open_issues_count: number;
-}
-
-interface GitHubPullRequest {
-  number: number;
-  title: string;
-  html_url: string;
-  state: string;
-  created_at: string;
-  merged_at: string | null;
-  user: {
-    login: string;
-  } | null;
-}
-
-interface GitHubIssue {
-  number: number;
-  title: string;
-  html_url: string;
-  pull_request?: object;
-  created_at?: string;
-  labels: Array<{
-    name: string;
-  }>;
-}
+  path: "/community",
+  ogImageAlt: "OFFER-HUB Community — contributors, issues, and pull requests",
+});
 
 const formatNumber = (num: number): string => {
   if (num >= 1000) {
@@ -116,15 +58,8 @@ function formatTimeAgo(dateString: string): string {
 const REPOS = [
   'OFFER-HUB/offer-hub-monorepo',
   'OFFER-HUB/OFFER-HUB',
-  'OFFER-HUB/OFFER-HUB-Frontend'
+  'OFFER-HUB/OFFER-HUB-Frontend',
 ];
-
-// In-memory cache for GitHub data (survives hot reloads in dev)
-let githubCache: { data: ReturnType<typeof processGitHubData> | null; timestamp: number } = {
-  data: null,
-  timestamp: 0,
-};
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 function processGitHubData(validData: NonNullable<Awaited<ReturnType<typeof fetchRepoData>>>[]): CommunityData {
   const totalStars = validData.reduce((acc, d) => acc + d.repo.stargazers_count, 0);
@@ -190,7 +125,7 @@ function processGitHubData(validData: NonNullable<Awaited<ReturnType<typeof fetc
 }
 
 async function fetchRepoData(repo: string) {
-  const cacheOpts = { next: { revalidate: 7200 } };
+  const cacheOpts = { next: { revalidate: 600 } };
   const [repoRes, contribRes, prRes, issueRes] = await Promise.all([
     fetch(`https://api.github.com/repos/${repo}`, cacheOpts),
     fetch(`https://api.github.com/repos/${repo}/contributors?per_page=100`, cacheOpts),
@@ -209,11 +144,6 @@ async function fetchRepoData(repo: string) {
 }
 
 async function fetchGitHubData() {
-  // Return cached data if still fresh
-  if (githubCache.data && Date.now() - githubCache.timestamp < CACHE_TTL) {
-    return githubCache.data;
-  }
-
   try {
     const allPills = await Promise.all(REPOS.map(fetchRepoData));
 
@@ -221,9 +151,7 @@ async function fetchGitHubData() {
 
     if (validData.length === 0) throw new Error('Failed to fetch any repo data');
 
-    const result = processGitHubData(validData);
-    githubCache = { data: result, timestamp: Date.now() };
-    return result;
+    return processGitHubData(validData);
   } catch (error) {
     console.error('Error fetching GitHub data:', error);
     return {
@@ -239,10 +167,10 @@ export default async function CommunityPage() {
   const { stats, contributors, pullRequests, issues } = await fetchGitHubData();
 
   return (
-    <>
+    <div className="w-full max-w-full overflow-x-hidden min-w-0">
       <LoadingBar />
       <Navbar />
-      <main className="pt-28">
+      <main className="pt-28 w-full max-w-full overflow-x-hidden min-w-0">
         <HeroRepoStatsSection stats={stats} />
         <RepoLinksSection />
         <ContributorsSection contributors={contributors} />
@@ -253,6 +181,6 @@ export default async function CommunityPage() {
         <RegistrationForm />
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

@@ -1,12 +1,11 @@
 import { cn } from "@/lib/cn";
 import type { HttpMethod } from "@/data/api-schema";
 
-const METHOD_CLASSES: Record<HttpMethod, string> = {
-  GET: "text-theme-success bg-theme-success/10",
-  POST: "text-theme-primary bg-theme-primary/10",
-  PUT: "text-theme-warning bg-theme-warning/10",
-  PATCH: "text-theme-accent bg-theme-accent/10",
-  DELETE: "text-theme-error bg-theme-error/10",
+const METHOD_STYLES: Record<HttpMethod, { color: string; bg: string }> = {
+  GET: { color: "var(--color-success)", bg: "rgba(22,163,74,0.12)" },
+  POST: { color: "var(--color-primary)", bg: "rgba(20,154,155,0.12)" },
+  PUT: { color: "var(--color-warning)", bg: "rgba(217,119,6,0.12)" },
+  DELETE: { color: "var(--color-error)", bg: "rgba(220,38,38,0.12)" },
 };
 
 interface MethodBadgeProps {

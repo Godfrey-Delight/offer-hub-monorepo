@@ -1,0 +1,304 @@
+---
+title: Security Best Practices
+description: Concrete guidance for platform integrators on API key management, real-time event security, wallet security, escrow verification, and blockchain-specific attack mitigations.
+order: 9
+section: Guides
+---
+
+<Callout type="note">
+  This is the public API/SDK guide for integrators. For internal implementation detail (Orchestrator state machine, signer roles), see [`docs/deployment/security-hardening.md`](https://github.com/OFFER-HUB/OFFER-HUB/blob/main/docs/deployment/security-hardening.md) in the repo.
+</Callout>
+
+Integrating OFFER-HUB into your marketplace means handling real USDC transactions on a public blockchain. A misconfiguration can expose user funds or allow spoofed payment events to reach your system. This guide gives you concrete, OFFER-HUB-specific security practices — not generic web security advice.
+
+<Callout type="warning">
+  This guide focuses on threats specific to payment orchestration and blockchain escrow. Read it before going to production.
+</Callout>
+
+## API Key Management
+
+OFFER-HUB API keys follow the format `ohk_live_xxx` (production) and `ohk_test_xxx` (sandbox). A leaked live key gives full control over all payment operations — including releasing escrow funds and initiating withdrawals.
+
+### Store Keys in Environment Variables
+
+<Callout type="tip">
+  API keys must **never** appear in source code, client-side bundles, or version control. Use environment variables, and load them server-side only.
+</Callout>
+
+```bash
+# .env — never commit this file
+OFFER_HUB_API_KEY=ohk_live_abc123...
+```
+
+```typescript
+// ✅ Read from the environment at runtime — server-side only
+const apiKey = process.env.OFFER_HUB_API_KEY;
+if (!apiKey) throw new Error('OFFER_HUB_API_KEY is not set');
+```
+
+```typescript
+// ❌ Never hardcode keys in source code
+const apiKey = 'ohk_live_abc123...'; // Will end up in git history
+
+// ❌ Never embed keys in client-side bundles
+const response = await fetch('/api/orders', {
+  headers: { Authorization: `Bearer ohk_live_abc123...` },
+});
+```
+
+### API Key Transport
+
+API keys must **only** travel server-to-server. Your marketplace backend calls OFFER-HUB; your frontend never does.
+
+```
+❌ Browser → OFFER-HUB API  (exposes key via DevTools)
+✅ Browser → Your Backend → OFFER-HUB API
+```
+
+### Rotation
+
+Rotate your API key:
+
+- **Immediately** if a team member with access leaves
+- **Immediately** if you suspect exposure (public repos, logs, error messages)
+- **Every 90 days** as routine practice in production
+
+### Scopes
+
+Use the minimum scope each service needs:
+
+| Service | Required Scope |
+|---------|----------------|
+| Read-only dashboard | `read` |
+| Order creation service | `write` |
+| Dispute resolution admin | `support` |
+
+---
+
+## Real-Time Event Security
+
+OFFER-HUB does **not** send outbound webhooks, so there is no webhook signature for you to verify and no `X-OfferHub-Signature` header. Real-time events arrive over the **SSE stream** (`GET /api/v1/events`), which is authenticated with your API key over HTTPS.
+
+### Protecting Your Event Consumers
+
+1. **Authenticate every connection** — SSE requires a valid API key (`events.read` scope) in the `Authorization` header. Never expose the stream unauthenticated.
+2. **Reconnect with `Last-Event-ID`** — Replay missed events after a dropped connection instead of polling; a gap could hide a critical settlement event.
+3. **Never trust an event alone** — A client-side event is a hint, not proof. Before releasing funds, changing balances, or triggering payouts, re-verify order and escrow state from the API (see [Escrow Integration Security](#escrow-integration-security)).
+4. **Treat webhook secrets as server-side only** — The `AIRTM_WEBHOOK_SECRET` and `TRUSTLESS_WEBHOOK_SECRET` environment variables protect the Orchestrator's **inbound** provider webhook receivers. They belong in your Orchestrator's environment, never in client code.
+
+<Callout type="warning">
+  An attacker cannot forge events from your Orchestrator: the SSE stream requires your API key and travels over TLS. The risk is trusting an event without confirming state — always cross-check with the API before acting on it.
+</Callout>
+
+### Replay Attack Prevention (Your Side)
+
+If you process events from the stream (for example, to trigger downstream effects), make them idempotent. Track processed `eventId` values so a replayed event after reconnection can't cause duplicate processing:
+
+```typescript
+const processed = new Set<string>(); // persist in Redis/DB for durability
+
+function onEvent(event: { eventId: string }) {
+  if (processed.has(event.eventId)) return; // duplicate — already handled
+  processed.add(event.eventId);
+  // Process the event exactly once
+}
+```
+
+---
+
+## Wallet Private Key Management
+
+OFFER-HUB manages Stellar invisible wallets for your users. Private keys are encrypted with AES-256-GCM at rest. As an integrator, you call the Orchestrator API — **you should never handle raw private keys directly.**
+
+### What the Orchestrator Handles
+
+- Generating Stellar keypairs per user
+- Encrypting and storing private keys (never in plaintext)
+- Decrypting keys **in memory only** during transaction signing
+- Zeroing the in-memory key immediately after signing
+
+### Rules You Must Follow
+
+```typescript
+// ❌ Never log objects that may contain key fields
+console.log('Wallet:', wallet); // Strip sensitive fields first
+
+// ❌ Never send private keys to clients
+res.json({ secretKey: wallet.secretKey }); // Never
+
+// ❌ Never store unencrypted keys
+await db.users.update({ stellarSecretKey: rawKey }); // Must be encrypted
+```
+
+### If You Self-Host the Orchestrator
+
+The encryption key protecting all wallet private keys must be treated as your most sensitive secret:
+
+```bash
+# Generate with high entropy — never a human-readable string
+WALLET_ENCRYPTION_KEY=$(openssl rand -hex 32)
+```
+
+- Store it in an HSM or managed secrets service (AWS Secrets Manager, HashiCorp Vault)
+- **Never** store it in your codebase, `.env` files in version control, or database
+- Back it up securely — losing this key means losing access to all user wallets permanently
+
+<Callout type="note">
+  The platform wallet (used to sign dispute resolutions) is the most sensitive key in the system. Consider an HSM like AWS CloudHSM or Azure Dedicated HSM for production deployments.
+</Callout>
+
+---
+
+## Escrow Integration Security
+
+The escrow flow is the highest-risk operation in OFFER-HUB. A bug here can result in funds being released to the wrong party or funds being permanently locked.
+
+### Verify State Before Releasing Funds
+
+Always verify order and escrow state from the API before triggering a resolution. Never rely solely on an event pushed over the SSE stream.
+
+```typescript
+async function releaseEscrow(orderId: string, requestedBy: string) {
+  const order = await offerHubClient.orders.get(orderId);
+
+  if (order.status !== 'IN_PROGRESS') {
+    throw new Error(`Cannot release order in state: ${order.status}`);
+  }
+  if (order.buyerId !== requestedBy) {
+    throw new Error('Only the buyer can release escrow funds');
+  }
+  if (!order.escrow || order.escrow.status !== 'FUNDED') {
+    throw new Error('Escrow is not in FUNDED state');
+  }
+
+  return offerHubClient.orders.release(orderId, 'Buyer approved release');
+}
+```
+
+### Verification Checklist
+
+Before calling `POST /orders/:id/resolution/release`:
+
+| Check | Why |
+|-------|-----|
+| Order status is `IN_PROGRESS` | Prevents double-release |
+| Requester is the buyer | Only the buyer approves delivery |
+| Escrow status is `FUNDED` | Prevents acting on unfunded escrow |
+| Work delivery evidence exists | App-level check: ensure work was submitted |
+| No open dispute exists | Cannot release during active dispute |
+
+### Use Idempotency Keys
+
+Protect against double-releases caused by network retries:
+
+```typescript
+const idempotentClient = offerHubClient.withIdempotencyKey(`release:${orderId}:${buyerId}`);
+await idempotentClient.orders.release(orderId, 'Buyer approved release');
+```
+
+---
+
+## Security Headers and CSP
+
+Configure HTTP security headers to protect your users from XSS attacks that could intercept payment flows.
+
+### Next.js Configuration
+
+```javascript
+// next.config.js
+const securityHeaders = [
+  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+];
+
+module.exports = {
+  async headers() {
+    return [{ source: '/(.*)', headers: securityHeaders }];
+  },
+};
+```
+
+### Content Security Policy
+
+A strict CSP prevents injected scripts from stealing session tokens or intercepting payment data:
+
+```
+Content-Security-Policy:
+  default-src 'self';
+  script-src 'self' 'nonce-{NONCE}';
+  connect-src 'self' https://your-orchestrator.example.com;
+  frame-ancestors 'none';
+  upgrade-insecure-requests;
+```
+
+<Callout type="warning">
+  Never use `script-src 'unsafe-inline'` or `connect-src *` in a payment context. Restrict `connect-src` to your Orchestrator's exact domain only.
+</Callout>
+
+---
+
+## Blockchain-Specific Attack Vectors
+
+### Replay Attacks
+
+**Risk:** A signed Stellar transaction is resubmitted to process the same payment twice.
+
+**Mitigation by OFFER-HUB:** Stellar transactions include a sequence number — each transaction can only be processed once. Replaying it returns `tx_bad_seq`.
+
+**Your responsibility:** Use idempotency keys on all API calls. If a release succeeds but the network drops before you receive the response, retry with the same idempotency key to get the cached result instead of a second release.
+
+### Front-Running
+
+**Risk:** An attacker submits a competing transaction before yours to manipulate fund flow.
+
+**Relevance:** Stellar uses a FIFO queue within each ledger cycle, not fee-priority auctions like Ethereum. Traditional front-running does not apply.
+
+**Residual risk:** Enforce strict RBAC on your Orchestrator deployment and enable database audit logging to prevent internal actors from triggering unauthorized releases.
+
+### Balance Desynchronization
+
+**Risk:** OFFER-HUB's off-chain balance (PostgreSQL) diverges from the on-chain USDC balance (Stellar ledger).
+
+**How to detect it:**
+
+```typescript
+async function reconcileBalance(userId: string) {
+  const offChain = await offerHubClient.balances.get(userId);
+  const account = await stellarServer.loadAccount(wallet.publicKey);
+  const usdcBalance = account.balances.find(b => b.asset_code === 'USDC');
+
+  const delta = Math.abs(
+    parseFloat(usdcBalance?.balance ?? '0') - parseFloat(offChain.available)
+  );
+
+  if (delta > 0.001) {
+    // Alert: investigate before processing further transactions
+    alertOpsTeam({ userId, offChain: offChain.available, onChain: usdcBalance?.balance });
+  }
+}
+```
+
+### Phishing via Fake Deposit Addresses
+
+**Risk:** An attacker substitutes a legitimate deposit address with their own Stellar address.
+
+```typescript
+// ✅ Always fetch deposit addresses from the API — never from user-supplied input
+const { data } = await offerHubClient.wallet.getDepositAddress(userId);
+displayAddress(data.address);
+
+// ❌ Never trust an address from the request body
+const depositAddress = req.body.depositAddress; // Attacker-controlled
+```
+
+---
+
+## Next Steps
+
+- [Escrow Guide](/docs/guide/escrow) — Smart contract escrow mechanics
+- [Real-Time Events & Webhooks](/docs/api-reference/webhooks) — SSE event stream and event catalog
+- [Self-Hosting Guide](/docs/guide/self-hosting) — Secure production deployment
+- [API Reference](/docs/api-reference/overview) — Authentication and rate limiting

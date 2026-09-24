@@ -7,6 +7,7 @@ import type { ApiEndpoint } from "@/data/api-schema";
 import { MethodBadge } from "./MethodBadge";
 import { ParameterInput } from "./ParameterInput";
 import { ResponseViewer } from "./ResponseViewer";
+import { Textarea } from "@/components/ui/Textarea";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/api/v1";
 
@@ -67,13 +68,17 @@ export function EndpointPanel({ endpoint }: EndpointPanelProps) {
     endpoint.requestBody;
 
   return (
-    <div className="rounded-2xl overflow-hidden bg-bg-base shadow-neu-raised relative z-10 transition-all duration-200">
+    <div
+      className="rounded-2xl overflow-hidden bg-bg-base shadow-neu-raised relative z-10"
+    >
       {/* ── Header button ── */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "w-full flex items-center gap-3 px-5 py-4 text-left transition-all duration-200",
-          isOpen ? "bg-bg-sunken shadow-neu-sunken-subtle" : "bg-bg-base hover:bg-bg-sunken/40"
+          "w-full flex items-center gap-3 px-5 py-4 text-left transition-[background-color,box-shadow] duration-200",
+          isOpen
+            ? "bg-bg-sunken shadow-neu-sunken-subtle"
+            : "bg-bg-base hover:bg-bg-sunken/50",
         )}
       >
         <MethodBadge method={endpoint.method} />
@@ -83,12 +88,13 @@ export function EndpointPanel({ endpoint }: EndpointPanelProps) {
         <span className="text-sm hidden md:inline text-content-secondary truncate max-w-sm">
           {endpoint.title}
         </span>
-
-        <div className="ml-auto flex items-center gap-2">
-          {endpoint.scope && (
-            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-bg-elevated text-theme-primary shadow-neu-raised-sm">
-              <ShieldCheck size={11} /> {endpoint.scope}
-            </span>
+        <ChevronDown
+          size={16}
+          aria-hidden="true"
+          className={cn(
+            "ml-auto flex-shrink-0 text-content-secondary transition-transform duration-300 ease-out",
+            isOpen && "rotate-0",
+            !isOpen && "-rotate-90",
           )}
           <ChevronDown
             size={16}
@@ -159,18 +165,18 @@ export function EndpointPanel({ endpoint }: EndpointPanelProps) {
 
               {endpoint.requestBody && (
                 <div className="space-y-2">
-                  <h4 className="text-[11px] font-black uppercase tracking-widest text-theme-primary">
-                    Request Body{" "}
-                    <span className="ml-2 font-normal normal-case tracking-normal text-content-secondary">
-                      {endpoint.requestBody.contentType}
-                    </span>
-                  </h4>
-                  <textarea
+                  <Textarea
+                    id={`request-body-${endpoint.path}`}
+                    label="Request body"
+                    labelClassName="text-[11px] font-black uppercase tracking-widest text-theme-primary"
                     value={bodyValue}
                     onChange={(e) => setBodyValue(e.target.value)}
                     rows={Math.min(bodyValue.split("\n").length + 1, 12)}
-                    className="w-full rounded-xl px-4 py-3 text-sm font-mono text-content-primary bg-bg-sunken shadow-neu-sunken outline-none resize-y transition-all border border-transparent focus:ring-2 focus:ring-theme-primary"
+                    className="text-sm font-mono resize-y"
                   />
+                  <p className="text-xs text-content-secondary">
+                    {endpoint.requestBody.contentType}
+                  </p>
                 </div>
               )}
             </div>
@@ -181,26 +187,23 @@ export function EndpointPanel({ endpoint }: EndpointPanelProps) {
             <h4 className="text-[11px] font-black uppercase tracking-widest text-theme-primary">
               Request URL
             </h4>
-            <div className="rounded-xl px-4 py-2.5 text-sm font-mono break-all text-theme-primary bg-bg-sunken shadow-neu-sunken-subtle">
-              <span className="text-content-secondary mr-2 font-bold">{endpoint.method}</span>
+            <div
+              className="rounded-xl px-4 py-2 text-sm font-mono break-all text-theme-primary bg-bg-sunken shadow-neu-sunken-subtle"
+            >
+              <span className="text-content-secondary mr-1">{endpoint.method}</span>
               {buildUrl()}
             </div>
           </div>
 
-          {/* Try it action */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleTryIt}
-              disabled={loading}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-theme-primary hover:bg-theme-primary-hover shadow-neu-raised hover:shadow-neu-raised-sm active:shadow-neu-sunken transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {loading ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
-              {loading ? "Simulating..." : "Send Request"}
-            </button>
-            <span className="text-xs text-content-secondary">
-              Simulates live request against OpenAPI 3.0 mock responder
-            </span>
-          </div>
+          {/* Try it */}
+          <button
+            onClick={handleTryIt}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white btn-neumorphic-primary disabled:opacity-60 disabled:cursor-not-allowed transition-[background-color,box-shadow,transform,opacity] duration-200"
+          >
+            {loading ? <Loader2 size={16} aria-hidden="true" className="animate-spin" /> : <Play size={16} aria-hidden="true" />}
+            {loading ? "Sending..." : "Try it"}
+          </button>
 
           {/* Response */}
           {showResponse && <ResponseViewer responses={endpoint.responses} />}

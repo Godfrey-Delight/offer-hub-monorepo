@@ -70,8 +70,8 @@ console.log('Reserved:', balance.reserved);    // "0.00"
 
 ```typescript
 const order = await sdk.orders.create({
-  buyerId: 'usr_buyer123',
-  sellerId: 'usr_seller456',
+  buyer_id: 'usr_buyer123',
+  seller_id: 'usr_seller456',
   amount: '100.00',
   currency: 'USD',
   title: 'Logo Design',
@@ -82,6 +82,17 @@ console.log('Order ID:', order.id);      // ord_xyz789
 console.log('Status:', order.status);    // ORDER_CREATED
 ```
 
+### Complete a Milestone
+
+Milestones are part of one order. List them with `sdk.orders.getMilestones()` and complete one by its `milestone_ref` using `sdk.orders.completeMilestone()` after the order reaches `IN_PROGRESS`:
+
+```typescript
+const milestones = await sdk.orders.getMilestones(order.id);
+
+const completedMilestone = await sdk.orders.completeMilestone(order.id, 'design');
+console.log('Milestone status:', completedMilestone.status); // COMPLETED
+```
+
 ### Complete Order Flow
 
 ```typescript
@@ -89,15 +100,13 @@ console.log('Status:', order.status);    // ORDER_CREATED
 await sdk.orders.reserve(order.id);
 
 // 2. Create escrow on blockchain
-await sdk.escrow.create(order.id);
+await sdk.orders.createEscrow(order.id);
 
 // 3. Fund the escrow
-await sdk.escrow.fund(order.id);
+await sdk.orders.fundEscrow(order.id);
 
 // 4. Release to seller when work is done
-await sdk.resolution.release(order.id, {
-  requestedBy: 'usr_buyer123'
-});
+await sdk.orders.release(order.id, 'Work completed');
 ```
 
 ## Available Resources
@@ -108,9 +117,7 @@ The SDK provides access to all Orchestrator resources:
 |----------|-------------|
 | `sdk.users` | Create and manage users |
 | `sdk.balance` | Check user balances |
-| `sdk.orders` | Create and manage orders |
-| `sdk.escrow` | Create and fund escrow contracts |
-| `sdk.resolution` | Release, refund, or dispute orders |
+| `sdk.orders` | Create and manage orders, escrows, and resolutions |
 | `sdk.disputes` | Manage disputes |
 | `sdk.wallet` | Wallet operations (deposit addresses) |
 | `sdk.withdrawals` | Create withdrawals |
